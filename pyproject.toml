@@ -21,7 +21,7 @@ dependencies = [
 dynamic = ['version']
 
 [project.optional-dependencies]
-dev = ["databricks-connect>=16.0, <17",
+dev = ["databricks-connect==15.4.5",
        "ipykernel>=6.29.5, <7",
        "pip>=25.0.1, <26",
        "pre-commit>=4.1.0, <5"]
