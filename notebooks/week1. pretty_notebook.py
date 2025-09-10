@@ -8,11 +8,11 @@
 # sys.path.append(str(Path.cwd().parent / 'src'))
 
 # COMMAND ----------
-from loguru import logger
-import yaml
-import sys
-from pyspark.sql import SparkSession
+
 import pandas as pd
+import yaml
+from loguru import logger
+from pyspark.sql import SparkSession
 
 from hotel_reservations.config import ProjectConfig
 from hotel_reservations.data_processor import DataProcessor
@@ -24,17 +24,17 @@ logger.info(yaml.dump(config, default_flow_style=False))
 
 # COMMAND ----------
 
-# Load the house prices dataset
+# Load the hotel reservations dataset
 spark = SparkSession.builder.getOrCreate()
 
-filepath = "../data/data.csv"
+filepath = "../data/Hotel Reservations.csv"
 
 # Load the data
 df = pd.read_csv(filepath)
 
 
 # COMMAND ----------
-# Load the house prices dataset
+# Load the hotel reservations dataset
 
 data_processor = DataProcessor(df, config, spark)
 
