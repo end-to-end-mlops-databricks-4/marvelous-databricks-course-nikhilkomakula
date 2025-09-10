@@ -29,6 +29,7 @@ dev = ["databricks-connect==15.4.5",
 test = ["pre-commit>=4.1.0, <5",
        "pytest>=8.0.0, <9",
        "pytest-cov>=5.0.0, <6",
+       "pydantic-settings==2.10.1",
        "pyspark>=3.4.0, <4"]
 
 [build-system]
