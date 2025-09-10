@@ -2,12 +2,11 @@
 
 import pandas as pd
 import pytest
-from tests.conftest import CATALOG_DIR
-
 from pyspark.sql import SparkSession
 
 from hotel_reservations.config import ProjectConfig
 from hotel_reservations.data_processor import DataProcessor
+from tests.conftest import CATALOG_DIR
 
 
 def test_data_ingestion(sample_data: pd.DataFrame) -> None:
