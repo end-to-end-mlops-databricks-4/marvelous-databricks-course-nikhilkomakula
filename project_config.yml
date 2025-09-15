@@ -8,9 +8,9 @@ dev:
   catalog_name: mlops_dev
   schema_name: nikhilko
 
-experiment_name_basic: /Shared/hotel-reservations-basic
-experiment_name_custom: /Shared/hotel-reservations-custom
-experiment_name_fe: /Shared/hotel-reservations-fe
+experiment_name_basic: /Users/nikhil.komakula@gmail.com/hotel-reservation-basic
+experiment_name_custom: /Users/nikhil.komakula@gmail.com/hotel-reservation-custom
+experiment_name_fe: /Users/nikhil.komakula@gmail.com/hotel-reservation-fe
 
 parameters:
   learning_rate: 0.01

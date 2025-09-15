@@ -14,8 +14,8 @@ import yaml
 from loguru import logger
 from pyspark.sql import SparkSession
 
-from hotel_reservations.config import ProjectConfig
-from hotel_reservations.data_processor import DataProcessor
+from hotel_reservation.config import ProjectConfig
+from hotel_reservation.data_processor import DataProcessor
 
 config = ProjectConfig.from_yaml(config_path="../project_config.yml", env="dev")
 

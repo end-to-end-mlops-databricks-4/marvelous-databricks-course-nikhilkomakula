@@ -1,0 +1,15 @@
+{
+    "_experiment_id": "325532143269177",
+    "_name": "/Users/nikhil.komakula@gmail.com/hotel_reservation",
+    "_artifact_location": "dbfs:/databricks/mlflow-tracking/325532143269177",
+    "_lifecycle_stage": "active",
+    "_tags": {
+        "mlflow.ownerId": "76157111399015",
+        "repository_name": "end-to-end-mlops-databricks-4/marvelous-databricks-course-nikhilkomakula",
+        "mlflow.experiment.sourceName": "/Users/nikhil.komakula@gmail.com/hotel_reservation",
+        "mlflow.ownerEmail": "nikhil.komakula@gmail.com",
+        "mlflow.experimentType": "MLFLOW_EXPERIMENT"
+    },
+    "_creation_time": 1757750627674,
+    "_last_update_time": 1757750627674
+}

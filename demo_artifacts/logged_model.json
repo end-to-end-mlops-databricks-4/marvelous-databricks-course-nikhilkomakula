@@ -1,0 +1,28 @@
+{
+    "artifact_location": "dbfs:/databricks/mlflow-tracking/325532143269177/logged_models/m-67920433637d4ca28924b26984aada03/artifacts",
+    "creation_timestamp": 1757919360894,
+    "experiment_id": "325532143269177",
+    "last_updated_timestamp": 1757919367592,
+    "metrics": [],
+    "model_id": "m-67920433637d4ca28924b26984aada03",
+    "model_type": "",
+    "name": "lightgbm-pipeline-model",
+    "params": {
+        "learning_rate": "0.01",
+        "max_depth": "6",
+        "model_type": "LightGBM with preprocessing",
+        "n_estimators": "1000"
+    },
+    "source_run_id": "7bccb5cd8b6f45a18818e0b679e86597",
+    "status": 2,
+    "status_message": "",
+    "tags": {
+        "mlflow.databricks.cluster.id": "0915-064735-hh60nvlt-v2n",
+        "mlflow.loggedModel.artifactLocation": "dbfs:/databricks/mlflow-tracking/325532143269177/logged_models/m-67920433637d4ca28924b26984aada03/artifacts",
+        "mlflow.loggedModel.name": "lightgbm-pipeline-model",
+        "mlflow.source.name": "/Volumes/My Data/My GitHub/marvelous-databricks-course-nikhilkomakula/.venv/lib/python3.12/site-packages/ipykernel_launcher.py",
+        "mlflow.source.type": "LOCAL",
+        "mlflow.artifacts.spn": "/WorkspaceInternal/Mlflow/Artifacts/325532143269177/LoggedModels/m-67920433637d4ca28924b26984aada03/",
+        "mlflow.user": "nikhil.komakula@gmail.com"
+    }
+}

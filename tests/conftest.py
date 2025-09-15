@@ -2,7 +2,7 @@
 
 import platform
 
-from hotel_reservations import PROJECT_DIR
+from hotel_reservation import PROJECT_DIR
 
 MLRUNS_DIR = PROJECT_DIR / "tests" / "mlruns"
 CATALOG_DIR = PROJECT_DIR / "tests" / "catalog"
