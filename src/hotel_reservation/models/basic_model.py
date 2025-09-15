@@ -21,7 +21,7 @@ from pyspark.sql import SparkSession
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 from hotel_reservation.config import ProjectConfig, Tags
 
@@ -69,7 +69,7 @@ class BasicModel:
         self.X_test = self.test_set[self.num_features + self.cat_features]
         self.y_test = self.test_set[self.target]
         logger.info("✅ Data successfully loaded.")
-        
+
         self.labelEncoder = LabelEncoder()
         self.y_train_encoded = self.labelEncoder.fit_transform(self.y_train)
         self.y_test_encoded = self.labelEncoder.fit_transform(self.y_test)
@@ -128,9 +128,7 @@ class BasicModel:
                 version=self.data_version,
             )
             mlflow.log_input(dataset, context="training")
-            mlflow.sklearn.log_model(
-                sk_model=self.pipeline, name="lightgbm-pipeline-model", signature=signature
-            )
+            mlflow.sklearn.log_model(sk_model=self.pipeline, name="lightgbm-pipeline-model", signature=signature)
 
     def register_model(self) -> None:
         """Register model in Unity Catalog."""

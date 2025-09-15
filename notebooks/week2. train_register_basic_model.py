@@ -1,14 +1,14 @@
 # Databricks notebook source
 
+import os
+
 import mlflow
+from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 
 from hotel_reservation.config import ProjectConfig, Tags
 from hotel_reservation.models.basic_model import BasicModel
-
-from dotenv import load_dotenv
 from hotel_reservation.utils import is_databricks
-import os
 
 # COMMAND ----------
 # If you have DEFAULT profile and are logged in with DEFAULT profile,
@@ -25,7 +25,7 @@ config = ProjectConfig.from_yaml(config_path="../project_config.yml", env="dev")
 spark = SparkSession.builder.getOrCreate()
 tags = Tags(**{"git_sha": "abcd12345", "branch": "week2"})
 
- # COMMAND ----------
+# COMMAND ----------
 # Initialize model with the config path
 basic_model = BasicModel(config=config, tags=tags, spark=spark)
 
@@ -65,6 +65,6 @@ test_set = spark.table(f"{config.catalog_name}.{config.schema_name}.test_set").l
 X_test = test_set.drop(config.target).toPandas()
 
 predictions_df = basic_model.load_latest_model_and_predict(X_test)
-predictions_df
+print(predictions_df)
 
 # COMMAND ----------

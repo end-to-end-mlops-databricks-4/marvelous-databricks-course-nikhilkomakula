@@ -1,7 +1,9 @@
 """Utility class."""
 
-import numpy as np
 import os
+
+import numpy as np
+
 
 def adjust_predictions(predictions: np.ndarray, threshold: float = 0.5) -> np.ndarray:
     """Adjust classification predictions using a custom threshold.
@@ -11,6 +13,7 @@ def adjust_predictions(predictions: np.ndarray, threshold: float = 0.5) -> np.nd
     :return: Adjusted predictions array (0 or 1)
     """
     return np.array([1 if prob >= threshold else 0 for prob in predictions])
+
 
 def is_databricks() -> bool:
     """Check if the code is running in a Databricks environment.
