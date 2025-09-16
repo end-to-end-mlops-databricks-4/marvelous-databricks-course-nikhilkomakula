@@ -41,7 +41,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where =["src"]
-include = ["hotel_reservation*", "marvel_characters*"]
+include = ["hotel_reservation*"]
 
 
 [tool.setuptools.dynamic]
