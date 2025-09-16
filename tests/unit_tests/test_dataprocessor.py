@@ -4,8 +4,8 @@ import pandas as pd
 import pytest
 from pyspark.sql import SparkSession
 
-from hotel_reservations.config import ProjectConfig
-from hotel_reservations.data_processor import DataProcessor
+from hotel_reservation.config import ProjectConfig
+from hotel_reservation.data_processor import DataProcessor
 from tests.conftest import CATALOG_DIR
 
 
