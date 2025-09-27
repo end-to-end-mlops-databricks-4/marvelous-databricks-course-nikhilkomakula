@@ -1,17 +1,16 @@
 # Databricks notebook source
+# MAGIC %pip install hotel_reservation-0.0.1-py3-none-any.whl
+
+# COMMAND ----------
+
 # install dependencies
 # %pip install -e ..
 # %pip install git+https://github.com/end-to-end-mlops-databricks-3/marvelous@0.1.0
 
 # COMMAND ----------
 
-# MAGIC %pip install hotel_reservation-0.0.1-py3-none-any.whl
-
-# COMMAND ----------
-
 #restart python
 %restart_python
-
 
 # COMMAND ----------
 
@@ -68,7 +67,7 @@ test_set = spark.table(f"{config.catalog_name}.{config.schema_name}.test_set")
 
 # COMMAND ----------
 
-# create feature table with information about hotel reservations
+# create feature table with information about houses
 
 feature_table_name = f"{config.catalog_name}.{config.schema_name}.hotel_reservation_features_demo"
 lookup_features = ["no_of_previous_cancellations", "no_of_previous_bookings_not_canceled"]
@@ -78,18 +77,18 @@ lookup_features = ["no_of_previous_cancellations", "no_of_previous_bookings_not_
 
 # Option 1: feature engineering client
 feature_table = fe.create_table(
-   name=feature_table_name,
-   primary_keys=["Booking_ID"],
-   df=train_set[["Booking_ID"]+lookup_features],
-   description="Hotel Reservation features table",
+    name=feature_table_name,
+    primary_keys=["Booking_ID"],
+    df=train_set[["Booking_ID"] + lookup_features],
+    description="Hotel Reservation features table",
 )
 
 spark.sql(f"ALTER TABLE {feature_table_name} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
 
 fe.write_table(
-   name=feature_table_name,
-   df=test_set[["Booking_ID"]+lookup_features],
-   mode="merge",
+    name=feature_table_name,
+    df=test_set[["Booking_ID"] + lookup_features],
+    mode="merge",
 )
 
 # COMMAND ----------
@@ -134,7 +133,6 @@ function_name = f"{config.catalog_name}.{config.schema_name}.calculate_booking_v
 
 # COMMAND ----------
 
-
 # Option 1: with Python
 spark.sql(f"""
         CREATE OR REPLACE FUNCTION {function_name}(
@@ -162,11 +160,11 @@ spark.sql(f"""
 #                 no_of_week_nights INT
 #         )
 #         RETURNS DOUBLE
-#         RETURN 
-#         CASE 
-#                 WHEN avg_price_per_room IS NULL 
-#                         OR no_of_weekend_nights IS NULL 
-#                         OR no_of_week_nights IS NULL 
+#         RETURN
+#         CASE
+#                 WHEN avg_price_per_room IS NULL
+#                         OR no_of_weekend_nights IS NULL
+#                         OR no_of_week_nights IS NULL
 #                 THEN NULL
 #                 ELSE avg_price_per_room * (no_of_weekend_nights + no_of_week_nights)
 #         END
@@ -175,11 +173,8 @@ spark.sql(f"""
 
 # COMMAND ----------
 
-# # Run the query and get the result as a DataFrame
-# result_df = spark.sql(f"SELECT {function_name}_sql(90.1, 2, 2) AS booking_value")
-
-# # Show the result in tabular form
-# result_df.show()
+# # execute function
+# spark.sql(f"SELECT {function_name}_sql(1960) as house_age;")
 
 # COMMAND ----------
 
@@ -189,15 +184,19 @@ training_set = fe.create_training_set(
     label=config.target,
     feature_lookups=[
         FeatureLookup(
-                table_name=feature_table_name,
-                feature_names=["no_of_previous_cancellations", "no_of_previous_bookings_not_canceled"],
-                lookup_key="Booking_ID",
-            ),
+            table_name=feature_table_name,
+            feature_names=["no_of_previous_cancellations", "no_of_previous_bookings_not_canceled"],
+            lookup_key="Booking_ID",
+        ),
         FeatureFunction(
-                udf_name=function_name,
-                output_name="booking_value",
-                input_bindings={"avg_price_per_room": "avg_price_per_room", "no_of_weekend_nights": "no_of_weekend_nights", "no_of_week_nights": "no_of_week_nights"},
-            ),
+            udf_name=function_name,
+            output_name="booking_value",
+            input_bindings={
+                "avg_price_per_room": "avg_price_per_room",
+                "no_of_weekend_nights": "no_of_weekend_nights",
+                "no_of_week_nights": "no_of_week_nights",
+            },
+        ),
     ],
     exclude_columns=["update_timestamp_utc"],
 )
@@ -218,13 +217,17 @@ y_train_encoded = labelEncoder.fit_transform(y_train)
 # COMMAND ----------
 
 pipeline = Pipeline(
-        steps=[("preprocessor", ColumnTransformer(
-            transformers=[("cat", OneHotEncoder(handle_unknown="ignore"),
-                           config.cat_features)],
-            remainder="passthrough")
+    steps=[
+        (
+            "preprocessor",
+            ColumnTransformer(
+                transformers=[("cat", OneHotEncoder(handle_unknown="ignore"), config.cat_features)],
+                remainder="passthrough",
             ),
-               ("classifier", LGBMClassifier(**config.parameters))]
-        )
+        ),
+        ("classifier", LGBMClassifier(**config.parameters)),
+    ]
+)
 
 pipeline.fit(X_train, y_train_encoded)
 
@@ -233,7 +236,7 @@ pipeline.fit(X_train, y_train_encoded)
 mlflow.set_experiment("/Shared/demo-model-fe")
 with mlflow.start_run(run_name="demo-run-model-fe",
                       tags={"git_sha": "1234567890abcd",
-                            "branch": "week2"},
+                            "branch": "week3"},
                             description="demo run for FE model logging") as run:
     # Log parameters and metrics
     run_id = run.info.run_id
@@ -263,10 +266,7 @@ model_version = mlflow.register_model(
 
 # make predictions
 features = [f for f in ["Booking_ID"] + config.num_features + config.cat_features if f not in lookup_features]
-predictions = fe.score_batch(
-    model_uri=f"models:/{model_name}/{model_version.version}",
-    df=test_set[features]
-)
+predictions = fe.score_batch(model_uri=f"models:/{model_name}/{model_version.version}", df=test_set[features])
 
 # COMMAND ----------
 
@@ -278,9 +278,10 @@ from pyspark.sql.functions import col
 
 features = [f for f in ["Booking_ID"] + config.num_features + config.cat_features if f not in lookup_features]
 test_set_with_new_id = test_set.select(*features)
+
 # .withColumn(
-#     "Booking_ID",
-#     (col("Booking_ID").cast("long") + 1000000).cast("string")
+#     "Id",
+#     (col("Id").cast("long") + 1000000).cast("string")
 # )
 
 predictions = fe.score_batch(
@@ -295,7 +296,9 @@ predictions.select("prediction").show(5)
 
 # COMMAND ----------
 
-no_of_previous_cancellations_function = f"{config.catalog_name}.{config.schema_name}.replace_no_of_previous_cancellations_missing"
+no_of_previous_cancellations_function = (
+    f"{config.catalog_name}.{config.schema_name}.replace_no_of_previous_cancellations_missing"
+)
 spark.sql(f"""
         CREATE OR REPLACE FUNCTION {no_of_previous_cancellations_function}(no_of_previous_cancellations BIGINT)
         RETURNS BIGINT
@@ -308,7 +311,9 @@ spark.sql(f"""
         $$
         """)
 
-no_of_previous_bookings_not_canceled_function = f"{config.catalog_name}.{config.schema_name}.replace_no_of_previous_bookings_not_canceled_missing"
+no_of_previous_bookings_not_canceled_function = (
+    f"{config.catalog_name}.{config.schema_name}.replace_no_of_previous_bookings_not_canceled_missing"
+)
 spark.sql(f"""
         CREATE OR REPLACE FUNCTION {no_of_previous_bookings_not_canceled_function}(no_of_previous_bookings_not_canceled BIGINT)
         RETURNS BIGINT
@@ -343,27 +348,33 @@ training_set = fe.create_training_set(
             table_name=feature_table_name,
             feature_names=["no_of_previous_cancellations", "no_of_previous_bookings_not_canceled"],
             lookup_key="Booking_ID",
-            rename_outputs={"no_of_previous_cancellations": "lookup_no_of_previous_cancellations",
-                            "no_of_previous_bookings_not_canceled": "lookup_no_of_previous_bookings_not_canceled"}
-                ),
+            rename_outputs={
+                "no_of_previous_cancellations": "lookup_no_of_previous_cancellations",
+                "no_of_previous_bookings_not_canceled": "lookup_no_of_previous_bookings_not_canceled",
+            },
+        ),
         FeatureFunction(
             udf_name=no_of_previous_cancellations_function,
             output_name="no_of_previous_cancellations",
             input_bindings={"no_of_previous_cancellations": "lookup_no_of_previous_cancellations"},
-            ),
+        ),
         FeatureFunction(
             udf_name=no_of_previous_bookings_not_canceled_function,
             output_name="no_of_previous_bookings_not_canceled",
             input_bindings={"no_of_previous_bookings_not_canceled": "lookup_no_of_previous_bookings_not_canceled"},
         ),
         FeatureFunction(
-                udf_name=function_name,
-                output_name="booking_value",
-                input_bindings={"avg_price_per_room": "avg_price_per_room", "no_of_weekend_nights": "no_of_weekend_nights", "no_of_week_nights": "no_of_week_nights"},
-            ),
+            udf_name=function_name,
+            output_name="booking_value",
+            input_bindings={
+                "avg_price_per_room": "avg_price_per_room",
+                "no_of_weekend_nights": "no_of_weekend_nights",
+                "no_of_week_nights": "no_of_week_nights",
+            },
+        ),
     ],
     exclude_columns=["update_timestamp_utc"],
-    )
+)
 
 # COMMAND ----------
 
@@ -373,25 +384,30 @@ X_train = training_df[config.num_features + config.cat_features + ["booking_valu
 y_train = training_df[config.target]
 y_train_encoded = labelEncoder.fit_transform(y_train)
 
-#pipeline
+# pipeline
 pipeline = Pipeline(
-        steps=[("preprocessor", ColumnTransformer(
-            transformers=[("cat", OneHotEncoder(handle_unknown="ignore"),
-                           config.cat_features)],
-            remainder="passthrough")
+    steps=[
+        (
+            "preprocessor",
+            ColumnTransformer(
+                transformers=[("cat", OneHotEncoder(handle_unknown="ignore"), config.cat_features)],
+                remainder="passthrough",
             ),
-               ("classifier", LGBMClassifier(**config.parameters))]
-        )
+        ),
+        ("classifier", LGBMClassifier(**config.parameters)),
+    ]
+)
 
 pipeline.fit(X_train, y_train_encoded)
 
 # COMMAND ----------
 
 mlflow.set_experiment("/Shared/demo-model-fe")
-with mlflow.start_run(run_name="demo-run-model-fe",
-                      tags={"git_sha": "1234567890abcd",
-                            "branch": "week2"},
-                            description="demo run for FE model logging") as run:
+with mlflow.start_run(
+    run_name="demo-run-model-fe",
+    tags={"git_sha": "1234567890abcd", "branch": "week3"},
+    description="demo run for FE model logging",
+) as run:
     # Log parameters and metrics
     run_id = run.info.run_id
     mlflow.log_param("model_type", "LightGBM with preprocessing")
@@ -400,17 +416,16 @@ with mlflow.start_run(run_name="demo-run-model-fe",
     # Log the model
     signature = infer_signature(model_input=X_train, model_output=pipeline.predict(X_train))
     fe.log_model(
-                model=pipeline,
-                flavor=mlflow.sklearn,
-                artifact_path="lightgbm-pipeline-model-fe",
-                training_set=training_set,
-                signature=signature,
-            )
+        model=pipeline,
+        flavor=mlflow.sklearn,
+        artifact_path="lightgbm-pipeline-model-fe",
+        training_set=training_set,
+        signature=signature,
+    )
 model_name = f"{config.catalog_name}.{config.schema_name}.model_fe_demo"
 model_version = mlflow.register_model(
-    model_uri=f'runs:/{run_id}/lightgbm-pipeline-model-fe',
-    name=model_name,
-    tags={"git_sha": "1234567890abcd"})
+    model_uri=f"runs:/{run_id}/lightgbm-pipeline-model-fe", name=model_name, tags={"git_sha": "1234567890abcd"}
+)
 
 # COMMAND ----------
 
@@ -423,10 +438,7 @@ test_set_with_new_id = test_set.select(*features)
 #     (col("Id").cast("long") + 1000000).cast("string")
 # )
 
-predictions = fe.score_batch(
-    model_uri=f"models:/{model_name}/{model_version.version}",
-    df=test_set_with_new_id 
-)
+predictions = fe.score_batch(model_uri=f"models:/{model_name}/{model_version.version}", df=test_set_with_new_id)
 
 # COMMAND ----------
 
@@ -435,75 +447,61 @@ predictions.select("prediction").show(5)
 
 # COMMAND ----------
 
-dbutils.secrets.get(scope="mlops", key="aws_access_key_id")
-
-# COMMAND ----------
-
-dbutils.secrets.get(scope="mlops", key="aws_secret_access_key")
-
-# COMMAND ----------
-
-dbutils.secrets.list("mlops")
-
-# COMMAND ----------
-
 import boto3
 
 region_name = "eu-west-1"
+aws_access_key_id = dbutils.secrets.get(scope="mlops", key="aws_access_key_id")
+aws_secret_access_key = dbutils.secrets.get(scope="mlops", key="aws_access_key")
 
 client = boto3.client(
     'dynamodb',
-    aws_access_key_id=dbutils.secrets.get(scope="mlops", key="aws_access_key_id"),
-    aws_secret_access_key=dbutils.secrets.get(scope="mlops", key="aws_secret_access_key"),
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key,
     region_name=region_name
 )
 
 # COMMAND ----------
 
+# client.delete_table(TableName="HotelFeatures")
+
+# COMMAND ----------
+
 response = client.create_table(
-    TableName='HotelFeatures',
+    TableName="HotelFeatures",
     KeySchema=[
         {
-            'AttributeName': 'Booking_ID',
-            'KeyType': 'HASH'  # Partition key
+            "AttributeName": "Booking_ID",
+            "KeyType": "HASH",  # Partition key
         }
     ],
     AttributeDefinitions=[
         {
-            'AttributeName': 'Booking_ID',
-            'AttributeType': 'S'  # String
+            "AttributeName": "Booking_ID",
+            "AttributeType": "S",  # String
         }
     ],
-    ProvisionedThroughput={
-        'ReadCapacityUnits': 5,
-        'WriteCapacityUnits': 5
-    }
+    ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
 )
 
-print("Table creation initiated:", response['TableDescription']['TableName'])
+print("Table creation initiated:", response["TableDescription"]["TableName"])
 
 # COMMAND ----------
 
 client.put_item(
-    TableName='HotelFeatures',
+    TableName="HotelFeatures",
     Item={
-        'Booking_ID': {'S': 'hotel_001'},
-        'no_of_previous_cancellations': {'N': '8'},
-        'no_of_previous_bookings_not_canceled': {'N': '2450'}
-    }
+        "Booking_ID": {"S": "hotel_001"},
+        "no_of_previous_cancellations": {"N": "2"},
+        "no_of_previous_bookings_not_canceled": {"N": "2"},
+    },
 )
 
 # COMMAND ----------
 
-response = client.get_item(
-    TableName='HotelFeatures',
-    Key={
-        'Booking_ID': {'S': 'hotel_001'}
-    }
-)
+response = client.get_item(TableName="HotelFeatures", Key={"Booking_ID": {"S": "hotel_001"}})
 
 # Extract the item from the response
-item = response.get('Item')
+item = response.get("Item")
 print(item)
 
 # COMMAND ----------
@@ -516,9 +514,9 @@ def to_dynamodb_item(row):
     return {
         'PutRequest': {
             'Item': {
-                'Booking_ID': {'S': str(row['Booking_ID'])},
-                'no_of_previous_cancellations': {'N': str(row['no_of_previous_cancellations'])},
-                'no_of_previous_bookings_not_canceled': {'N': str(row['no_of_previous_bookings_not_canceled'])}
+                "Booking_ID": {"S": str(row["Booking_ID"])},
+                "no_of_previous_cancellations": {"N": str(row["no_of_previous_cancellations"])},
+                "no_of_previous_bookings_not_canceled": {"N": str(row["no_of_previous_bookings_not_canceled"])},
             }
         }
     }
@@ -554,7 +552,6 @@ for batch in chunks(items, 25):
 
 # COMMAND ----------
 
-
 class HotelReservationModelWrapper(mlflow.pyfunc.PythonModel):
     """Wrapper class for machine learning models to be used with MLflow.
 
@@ -577,25 +574,26 @@ class HotelReservationModelWrapper(mlflow.pyfunc.PythonModel):
         :param model_input: Input data for making predictions.
         :return: A dictionary containing the adjusted prediction.
         """
-        client = boto3.client('dynamodb',
-                                   aws_access_key_id=os.environ["aws_access_key_id"],
-                                   aws_secret_access_key=os.environ["aws_access_key"],
-                                   region_name=region_name)
-        
+        client = boto3.client(
+            "dynamodb",
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=region_name,
+        )
+
         parsed = []
         for lookup_id in model_input["Booking_ID"]:
-            raw_item = client.get_item(
-                TableName='HotelFeatures',
-                Key={'Booking_ID': {'S': lookup_id}})["Item"]     
-            parsed_dict = {key: int(value['N']) if 'N' in value else value['S']
-                      for key, value in raw_item.items()}
+            raw_item = client.get_item(TableName="HotelFeatures", Key={"Booking_ID": {"S": lookup_id}})["Item"]
+            parsed_dict = {key: int(value["N"]) if "N" in value else value["S"] for key, value in raw_item.items()}
             parsed.append(parsed_dict)
-        lookup_df=pd.DataFrame(parsed)
+        lookup_df = pd.DataFrame(parsed)
         merged_df = model_input.merge(lookup_df, on="Booking_ID", how="left").drop("Booking_ID", axis=1)
-        
+
         merged_df["no_of_previous_cancellations"] = merged_df["no_of_previous_cancellations"].fillna(2)
         merged_df["no_of_previous_bookings_not_canceled"] = merged_df["no_of_previous_bookings_not_canceled"].fillna(2)
-        merged_df["booking_value"] = merged_df["avg_price_per_room"] * (merged_df["no_of_weekend_nights"] + merged_df["no_of_week_nights"])
+        merged_df["booking_value"] = merged_df["avg_price_per_room"] * (
+            merged_df["no_of_weekend_nights"] + merged_df["no_of_week_nights"]
+        )
         predictions = self.model.predict(merged_df)
 
         return [int(x) for x in predictions]
@@ -620,7 +618,7 @@ custom_model.predict(context=None, model_input=data)
 mlflow.set_experiment("/Shared/demo-model-fe-pyfunc")
 with mlflow.start_run(run_name="demo-run-model-fe-pyfunc",
                       tags={"git_sha": "1234567890abcd",
-                            "branch": "week2"},
+                            "branch": "week3"},
                             description="demo run for FE model logging") as run:
     # Log parameters and metrics
     run_id = run.info.run_id
@@ -631,8 +629,9 @@ with mlflow.start_run(run_name="demo-run-model-fe-pyfunc",
     signature = infer_signature(model_input=data, model_output=custom_model.predict(context=None, model_input=data))
     mlflow.pyfunc.log_model(
                 python_model=custom_model,
-                artifact_path="lightgbm-pipeline-model-fe-custom",
+                name="lightgbm-pipeline-model-fe",
                 signature=signature,
+                registered_model_name=f"{config.catalog_name}.{config.schema_name}.hotel_reservations_model_custom_db"
             )
     
 
