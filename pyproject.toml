@@ -53,6 +53,7 @@ include = ["hotel_reservation"]
 version = { file = "version.txt" }
 
 [tool.pytest.ini_options]
+norecursedirs = ".venv"
 testpaths = [ "tests" ]
 pythonpath = [ "." ]
 markers = [
