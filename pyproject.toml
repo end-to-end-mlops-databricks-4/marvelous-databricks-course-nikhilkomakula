@@ -36,7 +36,7 @@ test = ["pre-commit>=4.1.0, <5",
        "pytest>=8.0.0, <9",
        "pytest-cov>=5.0.0, <6",
        "pydantic-settings==2.10.1",
-       "pyspark>=3.4.0, <4"]
+       "pyspark==3.5.2"]
 
 [build-system]
 requires = [
