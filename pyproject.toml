@@ -17,10 +17,11 @@ dependencies = [
     "python-dotenv==1.1.1",
     "boto3>=1.40.30",
     "databricks-feature-engineering==0.13.0",
+    "databricks-feature-lookup==1.8.0",
     "ray[tune]==2.47.1",
     "optuna==4.4.0",
     "sdv==1.24.0",
-    "databricks-sdk==0.62.0",
+    "databricks-sdk==0.55.0",
 ]
 
 dynamic = ['version']
