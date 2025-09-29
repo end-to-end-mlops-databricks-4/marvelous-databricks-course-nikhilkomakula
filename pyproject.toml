@@ -16,18 +16,18 @@ dependencies = [
     "loguru==0.7.3",
     "python-dotenv==1.1.1",
     "boto3>=1.40.30",
-    "databricks-feature-engineering==0.13.0",
-    "databricks-feature-lookup==1.8.0",
     "ray[tune]==2.47.1",
     "optuna==4.4.0",
     "sdv==1.24.0",
-    "databricks-sdk==0.55.0",
 ]
 
 dynamic = ['version']
 
 [project.optional-dependencies]
-dev = ["databricks-connect==15.4.5",
+dev = ["databricks-feature-engineering==0.13.0",
+       "databricks-feature-lookup==1.8.0",
+       "databricks-sdk==0.62.0",
+       "databricks-connect==15.4.5",
        "ipykernel>=6.29.5, <7",
        "pip>=25.0.1, <26",
        "pre-commit>=4.1.0, <5"]
