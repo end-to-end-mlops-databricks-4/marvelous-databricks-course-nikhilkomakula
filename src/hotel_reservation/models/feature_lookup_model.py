@@ -36,7 +36,7 @@ class FeatureLookUpModel:
         self.schema_name = self.config.schema_name
 
         # Define table names and function name
-        self.feature_table_name = f"{self.catalog_name}.{self.schema_name}.hotel_reservations"
+        self.feature_table_name = f"{self.catalog_name}.{self.schema_name}.hotel_features"
         self.function_name = f"{self.catalog_name}.{self.schema_name}.calculate_booking_value"
 
         # MLflow configuration
@@ -50,7 +50,7 @@ class FeatureLookUpModel:
         """
         self.spark.sql(f"""
             CREATE OR REPLACE TABLE {self.feature_table_name}
-            (Booking_ID STRING NOT NULL, no_of_previous_cancellations INT, no_of_previous_bookings_not_canceled INT);
+            (Booking_ID STRING NOT NULL, no_of_previous_cancellations BIGINT, no_of_previous_bookings_not_canceled BIGINT);
         """)
         self.spark.sql(
             f"ALTER TABLE {self.feature_table_name} ADD CONSTRAINT hotel_reservation_pk PRIMARY KEY(Booking_ID);"
@@ -73,8 +73,8 @@ class FeatureLookUpModel:
         self.spark.sql(f"""
             CREATE OR REPLACE FUNCTION {self.function_name}(
                 avg_price_per_room DOUBLE,
-                no_of_weekend_nights INT,
-                no_of_week_nights INT
+                no_of_weekend_nights BIGINT,
+                no_of_week_nights BIGINT
             )
             RETURNS DOUBLE
             LANGUAGE PYTHON AS
@@ -90,17 +90,18 @@ class FeatureLookUpModel:
     def load_data(self) -> None:
         """Load training and testing data from Delta tables.
 
-        Drops specified columns and casts 'no_of_weekend_nights', 'no_of_week_nights' to integer type.
+        Drops specified columns.
         """
         self.train_set = self.spark.table(f"{self.catalog_name}.{self.schema_name}.train_set").drop(
             "no_of_previous_cancellations", "no_of_previous_bookings_not_canceled"
         )
         self.test_set = self.spark.table(f"{self.catalog_name}.{self.schema_name}.test_set").toPandas()
 
-        self.train_set = self.train_set.withColumn(
-            "no_of_weekend_nights", self.train_set["no_of_weekend_nights"].cast("int")
-        )
-        self.train_set = self.train_set.withColumn("no_of_week_nights", self.train_set["no_of_week_nights"].cast("int"))
+        # self.train_set = self.train_set.withColumn(
+        #     "no_of_weekend_nights", self.train_set["no_of_weekend_nights"].cast("int")
+        # )
+        # self.train_set = self.train_set.withColumn("no_of_week_nights", self.train_set["no_of_week_nights"].cast("int"))
+
         self.train_set = self.train_set.withColumn("Booking_ID", self.train_set["Booking_ID"].cast("string"))
         logger.info("✅ Data successfully loaded.")
 
@@ -151,7 +152,7 @@ class FeatureLookUpModel:
     def train(self) -> None:
         """Train the model and log results to MLflow.
 
-        Uses a pipeline with preprocessing and LightGBM regressor.
+        Uses a pipeline with preprocessing and LightGBM classifier.
         """
         logger.info("🚀 Starting training...")
 

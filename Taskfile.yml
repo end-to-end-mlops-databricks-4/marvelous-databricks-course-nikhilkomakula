@@ -87,4 +87,3 @@ tasks:
     cmds:
       - task: help
     silent: true
-

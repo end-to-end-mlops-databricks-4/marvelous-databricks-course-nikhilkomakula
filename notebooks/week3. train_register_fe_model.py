@@ -80,9 +80,9 @@ X_test.printSchema()
 
 from pyspark.sql.functions import col
 
-X_test = X_test.withColumn("no_of_week_nights", col("no_of_week_nights").cast("int")).withColumn(
-    "no_of_weekend_nights", col("no_of_weekend_nights").cast("int")
-)
+# X_test = X_test.withColumn("no_of_week_nights", col("no_of_week_nights").cast("int")).withColumn(
+#     "no_of_weekend_nights", col("no_of_weekend_nights").cast("int")
+# )
 
 # COMMAND ----------
 
@@ -97,5 +97,3 @@ logger.info(predictions)
 # COMMAND ----------
 
 display(predictions)
-
-# COMMAND ----------

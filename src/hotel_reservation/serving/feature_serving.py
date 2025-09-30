@@ -1,9 +1,8 @@
 """Feature Serving module."""
 
 from databricks import feature_engineering
-from databricks.feature_engineering import FeatureLookup
+from databricks.feature_engineering import FeatureEngineeringClient, FeatureLookup
 from databricks.sdk import WorkspaceClient
-from databricks.feature_engineering import FeatureEngineeringClient
 from databricks.sdk.service.serving import EndpointCoreConfigInput, ServedEntityInput
 
 
@@ -33,7 +32,7 @@ class FeatureServing:
         fe.publish_table(
             online_store=online_store,
             source_table_name=self.feature_table_name,
-            online_table_name=f"{self.feature_table_name}_online"
+            online_table_name=f"{self.feature_table_name}_online",
         )
 
     def create_feature_spec(self) -> None:
@@ -42,8 +41,8 @@ class FeatureServing:
         features = [
             FeatureLookup(
                 table_name=self.feature_table_name,
-                lookup_key="Id",
-                feature_names=["no_of_previous_cancellations", "no_of_previous_bookings_not_canceled"],
+                lookup_key="Booking_ID",
+                feature_names=["no_of_weekend_nights", "no_of_week_nights"],
             )
         ]
         self.fe.create_feature_spec(name=self.feature_spec_name, features=features, exclude_columns=None)

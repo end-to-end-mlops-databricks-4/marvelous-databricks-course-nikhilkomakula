@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install house_price-1.0.1-py3-none-any.whl
+# MAGIC %pip install hotel_reservation-0.0.1-py3-none-any.whl
 
 # COMMAND ----------
 
@@ -22,9 +22,9 @@ from dotenv import load_dotenv
 from mlflow.models import infer_signature
 from pyspark.sql import SparkSession
 
-from house_price.config import ProjectConfig, Tags
-from house_price.models.basic_model import BasicModel
-from house_price.utils import is_databricks
+from hotel_reservation.config import ProjectConfig, Tags
+from hotel_reservation.models.basic_model import BasicModel
+from hotel_reservation.utils import is_databricks
 
 # COMMAND ----------
 
@@ -40,12 +40,14 @@ spark = SparkSession.builder.getOrCreate()
 tags = Tags(**{"git_sha": "abcd12345", "branch": "week4"})
 
 # COMMAND ----------
+
 # Load project config
 config = ProjectConfig.from_yaml(config_path="../project_config.yml", env="dev")
 catalog_name = config.catalog_name
 schema_name = config.schema_name
 
 # COMMAND ----------
+
 # train model A
 basic_model = BasicModel(config=config, tags=tags, spark=spark)
 basic_model.load_data()
@@ -56,12 +58,13 @@ basic_model.register_model()
 model_A_uri = f"models:/{basic_model.model_name}@latest-model"
 
 # COMMAND ----------
+
 # train model B
 basic_model_b = BasicModel(config=config, tags=tags, spark=spark)
-basic_model_b.paramaters = {"learning_rate": 0.01,
-                            "n_estimators": 1000,
-                            "max_depth": 6}
-basic_model_b.model_name = f"{catalog_name}.{schema_name}.house_prices_model_basic_B"
+basic_model_b.paramaters = {"learning_rate": 0.1,
+                            "n_estimators": 1200,
+                            "max_depth": 5}
+basic_model_b.model_name = f"{catalog_name}.{schema_name}.hotel_reservation_model_basic_B"
 basic_model_b.load_data()
 basic_model_b.prepare_features()
 basic_model_b.train()
@@ -70,8 +73,9 @@ basic_model_b.register_model()
 model_B_uri = f"models:/{basic_model_b.model_name}@latest-model"
 
 # COMMAND ----------
+
 # define wrapper
-class HousePriceModelWrapper(mlflow.pyfunc.PythonModel):
+class HotelReservationModelWrapper(mlflow.pyfunc.PythonModel):
     def load_context(self, context):
         self.model_a = mlflow.sklearn.load_model(
             context.artifacts["lightgbm-pipeline-model-A"]
@@ -81,51 +85,54 @@ class HousePriceModelWrapper(mlflow.pyfunc.PythonModel):
         )
 
     def predict(self, context, model_input):
-        house_id = str(model_input["Id"].values[0])
-        hashed_id = hashlib.md5(house_id.encode(encoding="UTF-8")).hexdigest()
+        booking_id = str(model_input["Booking_ID"].values[0])
+        hashed_id = hashlib.md5(booking_id.encode(encoding="UTF-8")).hexdigest()
         # convert a hexadecimal (base-16) string into an integer
         if int(hashed_id, 16) % 2:
-            predictions = self.model_a.predict(model_input.drop(["Id"], axis=1))
+            predictions = self.model_a.predict(model_input.drop(["Booking_ID"], axis=1))
             return {"Prediction": predictions[0], "model": "Model A"}
         else:
-            predictions = self.model_b.predict(model_input.drop(["Id"], axis=1))
+            predictions = self.model_b.predict(model_input.drop(["Booking_ID"], axis=1))
             return {"Prediction": predictions[0], "model": "Model B"}
 
 # COMMAND ----------
+
 train_set_spark = spark.table(f"{catalog_name}.{schema_name}.train_set")
 train_set = train_set_spark.toPandas()
 test_set = spark.table(f"{catalog_name}.{schema_name}.test_set").toPandas()
-X_train = train_set[config.num_features + config.cat_features + ["Id"]]
-X_test = test_set[config.num_features + config.cat_features + ["Id"]]
+X_train = train_set[config.num_features + config.cat_features + ["Booking_ID"]]
+X_test = test_set[config.num_features + config.cat_features + ["Booking_ID"]]
 
 # COMMAND ----------
-mlflow.set_experiment(experiment_name="/Shared/house-prices-ab-testing")
-model_name = f"{catalog_name}.{schema_name}.house_prices_model_pyfunc_ab_test"
-wrapped_model = HousePriceModelWrapper()
+
+mlflow.set_experiment(experiment_name="/Shared/hotel-reservations-ab-testing")
+model_name = f"{catalog_name}.{schema_name}.hotel_reservations_model_pyfunc_ab_test"
+wrapped_model = HotelReservationModelWrapper()
 
 with mlflow.start_run() as run:
     run_id = run.info.run_id
-    signature = infer_signature(model_input=X_train, model_output={"Prediction": 1234.5, "model": "Model B"})
+    signature = infer_signature(model_input=X_train, model_output={"Prediction": [0], "model": "Model B"})
     dataset = mlflow.data.from_spark(train_set_spark, table_name=f"{catalog_name}.{schema_name}.train_set", version="0")
     mlflow.log_input(dataset, context="training")
     mlflow.pyfunc.log_model(
         python_model=wrapped_model,
-        artifact_path="pyfunc-house-price-model-ab",
+        artifact_path="pyfunc-hotel-reservation-model-ab",
         artifacts={
             "lightgbm-pipeline-model-A": model_A_uri,
             "lightgbm-pipeline-model-B": model_B_uri},
         signature=signature
     )
 model_version = mlflow.register_model(
-    model_uri=f"runs:/{run_id}/pyfunc-house-price-model-ab", name=model_name, tags=tags.dict()
+    model_uri=f"runs:/{run_id}/pyfunc-hotel-reservation-model-ab", name=model_name, tags=tags.dict()
 )
 
 # COMMAND ----------
+
 """Model serving module."""
 
 workspace = WorkspaceClient()
-model_name=f"{catalog_name}.{schema_name}.house_prices_model_pyfunc_ab_test"
-endpoint_name="house-prices-ab-testing"
+model_name=f"{catalog_name}.{schema_name}.hotel_reservations_model_pyfunc_ab_test"
+endpoint_name="hotel-reservations-ab-testing"
 entity_version = model_version.version # registered model version
 
 # get environment variables
@@ -155,7 +162,7 @@ workspace.serving_endpoints.create(
 spark = SparkSession.builder.getOrCreate()
 
 train_set = spark.table(f"{catalog_name}.{schema_name}.train_set").toPandas()
-sampled_records = train_set[config.num_features + config.cat_features + ["Id"]].sample(n=1000, replace=True).to_dict(orient="records")
+sampled_records = train_set[config.num_features + config.cat_features + ["Booking_ID"]].sample(n=1000, replace=True).to_dict(orient="records")
 dataframe_records = [[record] for record in sampled_records]
 
 print(train_set.dtypes)
@@ -167,7 +174,7 @@ print(dataframe_records[0])
 
 def call_endpoint(record):
     """Calls the model serving endpoint with a given input record."""
-    serving_endpoint = f"https://{os.environ['DBR_HOST']}/serving-endpoints/house-prices-ab-testing/invocations"
+    serving_endpoint = f"{os.environ['DBR_HOST']}/serving-endpoints/{endpoint_name}/invocations"
 
     response = requests.post(
         serving_endpoint,

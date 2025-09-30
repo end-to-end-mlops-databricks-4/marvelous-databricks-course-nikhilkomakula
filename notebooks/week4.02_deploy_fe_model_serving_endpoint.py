@@ -1,10 +1,12 @@
 # Databricks notebook source
-# MAGIC %pip install house_price-0.0.1-py3-none-any.whl
+# MAGIC %pip install hotel_reservation-0.0.1-py3-none-any.whl
 
 # COMMAND ----------
+
 # MAGIC %restart_python
 
 # COMMAND ----------
+
 import os
 import time
 
@@ -14,8 +16,8 @@ from databricks.sdk import WorkspaceClient
 from loguru import logger
 from pyspark.sql import SparkSession
 
-from house_price.config import ProjectConfig
-from house_price.serving.fe_model_serving import FeatureLookupServing
+from hotel_reservation.config import ProjectConfig
+from hotel_reservation.serving.fe_model_serving import FeatureLookupServing
 
 # COMMAND ----------
 
@@ -31,20 +33,33 @@ os.environ["DBR_TOKEN"] = w.tokens.create(lifetime_seconds=1200).token_value
 config = ProjectConfig.from_yaml(config_path="../project_config.yml", env="dev")
 catalog_name = config.catalog_name
 schema_name = config.schema_name
-endpoint_name = "house-prices-model-serving-fe"
+endpoint_name = "hotel-reservation-model-serving-fe"
 
 # COMMAND ----------
+
 # Initialize Feature Lookup Serving Manager
 feature_model_server = FeatureLookupServing(
-    model_name=f"{catalog_name}.{schema_name}.house_prices_model_fe",
+    model_name=f"{catalog_name}.{schema_name}.hotel_reservations_model_fe",
     endpoint_name=endpoint_name,
-    feature_table_name=f"{catalog_name}.{schema_name}.house_features",
+    feature_table_name=f"{catalog_name}.{schema_name}.hotel_features",
 )
 
 # COMMAND ----------
-# Create online store
+
 fe = FeatureEngineeringClient()
-online_store_name = "house-predictions"
+online_store_name = "hotel-reservation-predictions"
+
+# COMMAND ----------
+
+fe.get_online_store(name=online_store_name)
+
+# COMMAND ----------
+
+# fe.delete_online_store(name=online_store_name)
+
+# COMMAND ----------
+
+# Create online store
 if fe.get_online_store(name=online_store_name) is None:
     fe.create_online_store(
         name=online_store_name,
@@ -53,50 +68,47 @@ if fe.get_online_store(name=online_store_name) is None:
     online_store = fe.get_online_store(name=online_store_name)
 else:
     online_store = fe.get_online_store(name=online_store_name)
-# COMMAND ----------
-
-# Create the online table for house features
-feature_model_server.create_online_table(online_store=online_store)
 
 # COMMAND ----------
+
+# Create the online table for hotel reservations
+# feature_model_server.create_online_table(online_store=online_store)
+feature_model_server.create_or_update_online_table(online_store_name=online_store_name)
+
+# COMMAND ----------
+
 # Deploy the model serving endpoint with feature lookup
 feature_model_server.deploy_or_update_serving_endpoint()
 
 
 # COMMAND ----------
+
 # Create a sample request body
 required_columns = [
-    "LotFrontage",
-    "LotArea",
-    "OverallCond",
-    "YearBuilt",
-    "YearRemodAdd",
-    "MasVnrArea",
-    "TotalBsmtSF",
-    "MSZoning",
-    "Street",
-    "Alley",
-    "LotShape",
-    "LandContour",
-    "Neighborhood",
-    "Condition1",
-    "BldgType",
-    "HouseStyle",
-    "RoofStyle",
-    "Exterior1st",
-    "Exterior2nd",
-    "MasVnrType",
-    "Foundation",
-    "Heating",
-    "CentralAir",
-    "SaleType",
-    "SaleCondition",
-    "Id",
+    "Booking_ID",
+    "no_of_adults",
+    "no_of_children",
+    "no_of_weekend_nights",
+    "no_of_week_nights",
+    "type_of_meal_plan",
+    "required_car_parking_space",
+    "room_type_reserved",
+    "lead_time",
+    "arrival_year",
+    "arrival_month",
+    "arrival_date",
+    "market_segment_type",
+    "repeated_guest",
+    "no_of_previous_cancellations",
+    "no_of_previous_bookings_not_canceled",
+    "avg_price_per_room",
+    "no_of_special_requests"
 ]
 
 spark = SparkSession.builder.getOrCreate()
 
 train_set = spark.table(f"{config.catalog_name}.{config.schema_name}.train_set").toPandas()
+
 sampled_records = train_set[required_columns].sample(n=1000, replace=True).to_dict(orient="records")
 dataframe_records = [[record] for record in sampled_records]
 
@@ -105,10 +117,15 @@ logger.info(dataframe_records[0])
 
 
 # COMMAND ----------
+
+dataframe_records[0]
+
+# COMMAND ----------
+
 # Call the endpoint with one sample record
 def call_endpoint(record) -> tuple[int, str]:
     """Call the model serving endpoint with a given input record."""
-    serving_endpoint = f"https://{os.environ['DBR_HOST']}/serving-endpoints/{endpoint_name}/invocations"
+    serving_endpoint = f"{os.environ['DBR_HOST']}/serving-endpoints/{endpoint_name}/invocations"
 
     response = requests.post(
         serving_endpoint,
@@ -123,6 +140,7 @@ print(f"Response Status: {status_code}")
 print(f"Response Text: {response_text}")
 
 # COMMAND ----------
+
 # Load test
 for i in range(len(dataframe_records)):
     status_code, response_text = call_endpoint(dataframe_records[i])

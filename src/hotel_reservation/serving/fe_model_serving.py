@@ -1,15 +1,9 @@
 """FeaturLookUp Serving module."""
 
-import time
-
 import mlflow
+from databricks.feature_engineering import FeatureEngineeringClient
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service import catalog
-
-from databricks.feature_engineering import FeatureEngineeringClient, FeatureFunction, FeatureLookup
-
 from databricks.sdk.service.serving import EndpointCoreConfigInput, ServedEntityInput
-from loguru import logger
 
 
 class FeatureLookupServing:
@@ -46,7 +40,7 @@ class FeatureLookupServing:
         fe.publish_table(
             online_store=online_store,
             source_table_name=self.feature_table_name,
-            online_table_name=f"{self.feature_table_name}_online"
+            online_table_name=f"{self.feature_table_name}_online",
         )
 
     def deploy_or_update_serving_endpoint(
