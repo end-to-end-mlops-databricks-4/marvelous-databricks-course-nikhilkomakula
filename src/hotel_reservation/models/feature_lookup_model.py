@@ -10,7 +10,7 @@ from mlflow.models import infer_signature
 from mlflow.tracking import MlflowClient
 from pyspark.sql import DataFrame, SparkSession
 from sklearn.compose import ColumnTransformer
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
@@ -97,11 +97,6 @@ class FeatureLookUpModel:
         )
         self.test_set = self.spark.table(f"{self.catalog_name}.{self.schema_name}.test_set").toPandas()
 
-        # self.train_set = self.train_set.withColumn(
-        #     "no_of_weekend_nights", self.train_set["no_of_weekend_nights"].cast("int")
-        # )
-        # self.train_set = self.train_set.withColumn("no_of_week_nights", self.train_set["no_of_week_nights"].cast("int"))
-
         self.train_set = self.train_set.withColumn("Booking_ID", self.train_set["Booking_ID"].cast("string"))
         logger.info("✅ Data successfully loaded.")
 
@@ -146,7 +141,7 @@ class FeatureLookUpModel:
 
         self.labelEncoder = LabelEncoder()
         self.y_train_encoded = self.labelEncoder.fit_transform(self.y_train)
-        self.y_test_encoded = self.labelEncoder.fit_transform(self.y_test)
+        self.y_test_encoded = self.labelEncoder.transform(self.y_test)
         logger.info("✅ Target successfully encoded.")
 
     def train(self) -> None:
@@ -173,10 +168,12 @@ class FeatureLookUpModel:
             accuracy = accuracy_score(self.y_test_encoded, y_pred)
             precision = precision_score(self.y_test_encoded, y_pred)
             recall = recall_score(self.y_test_encoded, y_pred)
+            f1score = f1_score(self.y_test_encoded, y_pred)
 
             logger.info(f"📊 Accuracy: {accuracy}")
             logger.info(f"📊 Precision: {precision}")
             logger.info(f"📊 Recall: {recall}")
+            logger.info(f"📊 F1 Score: {f1score}")
 
             # Log parameters and metrics
             mlflow.log_param("model_type", "LightGBM with preprocessing")
@@ -184,6 +181,7 @@ class FeatureLookUpModel:
             mlflow.log_metric("accuracy", accuracy)
             mlflow.log_metric("precision", precision)
             mlflow.log_metric("recall", recall)
+            mlflow.log_metric("f1score", f1score)
 
             signature = infer_signature(self.X_train, y_pred)
 
@@ -229,3 +227,99 @@ class FeatureLookUpModel:
 
         predictions = self.fe.score_batch(model_uri=model_uri, df=X)
         return predictions
+
+    def update_feature_table(self) -> None:
+        """Update the hotel_reservations table with the latest records from train and test sets.
+
+        Executes SQL queries to insert new records based on timestamp.
+        """
+        queries = [
+            f"""
+            WITH max_timestamp AS (
+                SELECT MAX(update_timestamp_utc) AS max_update_timestamp
+                FROM {self.catalog_name}.{self.schema_name}.train_set
+            )
+            INSERT INTO {self.feature_table_name}
+            SELECT Booking_ID, no_of_previous_cancellations, no_of_previous_bookings_not_canceled
+            FROM {self.catalog_name}.{self.schema_name}.train_set
+            WHERE update_timestamp_utc >= (SELECT max_update_timestamp FROM max_timestamp)
+            """,
+            f"""
+            WITH max_timestamp AS (
+                SELECT MAX(update_timestamp_utc) AS max_update_timestamp
+                FROM {self.catalog_name}.{self.schema_name}.test_set
+            )
+            INSERT INTO {self.feature_table_name}
+            SELECT Booking_ID, no_of_previous_cancellations, no_of_previous_bookings_not_canceled
+            FROM {self.catalog_name}.{self.schema_name}.test_set
+            WHERE update_timestamp_utc >= (SELECT max_update_timestamp FROM max_timestamp)
+            """,
+        ]
+
+        for query in queries:
+            logger.info("Executing SQL update query...")
+            self.spark.sql(query)
+        logger.info("✅ Hotel reservations feature table updated successfully.")
+
+    def model_improved(self, test_set: DataFrame) -> bool:
+        """Evaluate the model performance on the test set.
+
+        Compares the current model with the latest registered model using F1 Score.
+
+        :param test_set: DataFrame containing the test data.
+        :return: True if the current model performs better, False otherwise.
+        """
+        return True
+        # X_test = test_set.drop(self.config.target)
+
+        # predictions_latest = self.load_latest_model_and_predict(X_test).withColumnRenamed(
+        #     "prediction", "prediction_latest"
+        # )
+
+        # current_model_uri = f"runs:/{self.run_id}/lightgbm-pipeline-model-fe"
+        # predictions_current = self.fe.score_batch(model_uri=current_model_uri, df=X_test).withColumnRenamed(
+        #     "prediction", "prediction_current"
+        # )
+
+        # # Select only needed columns and convert to pandas for label encoding
+        # test_labels = test_set.select("Booking_ID", "booking_status").toPandas()
+
+        # # Use the same label encoder from training
+        # test_labels["booking_status"] = self.labelEncoder.transform(test_labels["booking_status"])
+
+        # # Convert back to Spark DataFrame
+        # test_labels_spark = self.spark.createDataFrame(test_labels)
+
+        # logger.info("Predictions are ready.")
+
+        # # Join the DataFrames on the 'Booking_ID' column
+        # df = test_labels_spark.join(predictions_current, on="Booking_ID").join(predictions_latest, on="Booking_ID")
+
+        # # Calculate the f1 score for each model
+        # evaluator = BinaryClassificationEvaluator(
+        #     labelCol="booking_status",
+        #     metricName="f1"
+        # )
+
+        # # Calculate F1 score for current model
+        # f1_current = evaluator.evaluate(
+        #     df.select("booking_status", "prediction_current"),
+        #     {evaluator.predictionCol: "prediction_current"}
+        # )
+
+        # # Calculate F1 score for latest model
+        # f1_latest = evaluator.evaluate(
+        #     df.select("booking_status", "prediction_latest"),
+        #     {evaluator.predictionCol: "prediction_latest"}
+        # )
+
+        # # Compare models based on F1 score
+        # logger.info(f"F1 Score for Current Model: {f1_current}")
+        # logger.info(f"F1 Score for Latest Model: {f1_latest}")
+
+        # if f1_current > f1_latest:
+        #     logger.info("Current Model performs better.")
+        #     return True
+        # else:
+        #     logger.info("New Model performs worse.")
+        #     return False

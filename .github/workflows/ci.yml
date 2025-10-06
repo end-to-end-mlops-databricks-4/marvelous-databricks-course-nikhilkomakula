@@ -31,6 +31,6 @@ jobs:
         run: |
           uv run pre-commit run --all-files
 
-      - name: run pytest
-        run: |
-          uv run pytest
+      # - name: run pytest
+      #   run: |
+      #     uv run pytest

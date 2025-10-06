@@ -72,7 +72,7 @@ class BasicModel:
 
         self.labelEncoder = LabelEncoder()
         self.y_train_encoded = self.labelEncoder.fit_transform(self.y_train)
-        self.y_test_encoded = self.labelEncoder.fit_transform(self.y_test)
+        self.y_test_encoded = self.labelEncoder.transform(self.y_test)
         logger.info("✅ Target successfully encoded.")
 
     def prepare_features(self) -> None:
