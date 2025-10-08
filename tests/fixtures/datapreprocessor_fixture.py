@@ -5,8 +5,8 @@ import pytest
 from loguru import logger
 from pyspark.sql import SparkSession
 
-from hotel_reservations import PROJECT_DIR
-from hotel_reservations.config import ProjectConfig, Tags
+from hotel_reservation import PROJECT_DIR
+from hotel_reservation.config import ProjectConfig, Tags
 from tests.unit_tests.spark_config import spark_config
 
 

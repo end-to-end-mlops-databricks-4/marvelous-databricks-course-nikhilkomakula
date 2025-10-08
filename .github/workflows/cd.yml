@@ -3,16 +3,16 @@ name: CD
 on:
   workflow_dispatch:
 
-  # push:
-  #   branches:
-  #     - 'main'
+  push:
+    branches:
+      - 'week5'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [acc, prd]
+        environment: [acc]
     environment: ${{ matrix.environment }}
     permissions:
       id-token: write
@@ -49,9 +49,9 @@ jobs:
         env:
           DATABRICKS_BUNDLE_ENV: ${{ matrix.environment }}
         run: |
-            if [ "${{ matrix.environment }}" = "prd" ]; then
+          if [ "${{ matrix.environment }}" = "prd" ]; then
             echo "VERSION=$(cat version.txt)"
             git tag $VERSION
             git push origin $VERSION
-            fi
-            databricks bundle deploy --var="git_sha=${{ github.sha }}"
+          fi
+          databricks bundle deploy --var="git_sha=${{ github.sha }}"
