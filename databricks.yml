@@ -174,7 +174,7 @@ targets:
       name_prefix: "test_"
     workspace:
       host: https://dbc-f122dc18-1b68.cloud.databricks.com
-      root_path: /Shared/.bundle/${bundle.target}/${bundle.name}
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
     variables:
       schedule_pause_status: PAUSED
       is_test: 1
@@ -186,7 +186,7 @@ targets:
       name_prefix: "acc_"
     workspace:
       host: https://dbc-f122dc18-1b68.cloud.databricks.com
-      root_path: /Shared/.bundle/${bundle.target}/${bundle.name}
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
     variables:
       schedule_pause_status: PAUSED
       is_test: 1
@@ -197,7 +197,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f122dc18-1b68.cloud.databricks.com
-      root_path: /Shared/.bundle/${bundle.target}/${bundle.name}
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
     variables:
       schedule_pause_status: PAUSED # normally UNPAUSED
       is_test: 0
